@@ -25,6 +25,8 @@ import signal
 import copy
 import re
 
+import parse_pytest
+
 logger = logging.getLogger("tdsr")
 logger.addHandler(logging.NullHandler())
 
@@ -422,8 +424,21 @@ def handle_delete():
 
 matcher = re.compile(r'([-=!#])\1*')
 
+def handle_pytest():
+	lines = []
+	for i in reversed(range(len(screen.buffer))):
+		line = "".join(screen.buffer[i][x].data for x in range(screen.columns)).strip()
+		lines.append(line)
+		if "pytest " in line:
+			break
+	lines_to_read = parse_pytest.parse_output(lines)
+
+	for line in lines_to_read:
+		say(line)
+
 def sayline(y):
 	line = "".join(screen.buffer[y][x].data for x in range(screen.columns)).strip()
+	logger.info("saying line" + line)
 	if line == u'':
 		line = u'blank'
 
@@ -817,6 +832,7 @@ keymap = {
 	b'\x1bk\x1bk': lambda: sayword(spell=True),
 	b'\x1bl': nextword,
 	b'\x1bm': prevchar,
+	b'\x1bp': handle_pytest,
 	b'\x1b,': lambda: saychar(state.revy, state.revx),
 	b'\x1b,\x1b,': lambda: saychar(state.revy, state.revx, phonetically=True),
 	b'\x1b.': nextchar,
