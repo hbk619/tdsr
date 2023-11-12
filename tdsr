@@ -422,7 +422,7 @@ def handle_delete():
 	say_character(screen.buffer[screen.cursor.y][screen.cursor.x].data)
 	return KeyHandler.PASSTHROUGH
 
-matcher = re.compile(r'([-=!#])\1*')
+matcher = re.compile(r'([-=!#])\1{2,}')
 
 def handle_pytest():
 	lines = []
@@ -442,9 +442,7 @@ def sayline(y):
 	if line == u'':
 		line = u'blank'
 
-	new_line = replace_duplicate_characters_with_count(line)
-
-	say(new_line)
+	say(line)
 
 
 def replace_duplicate_characters_with_count(line):
@@ -612,10 +610,10 @@ def sb():
 	if data == u'':
 		return
 	if not state.tempsilence:
-		new_line = replace_duplicate_characters_with_count(data)
-		say(new_line)
+		say(data)
 
 def say(data, force_process_symbols=False):
+	data = replace_duplicate_characters_with_count(data)
 	data = data.strip()
 	def replace_symbols(m):
 		return " %s " % state.config['symbols'][str(ord(m.group(0)))]
