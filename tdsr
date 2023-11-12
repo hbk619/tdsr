@@ -16,7 +16,6 @@ from io import StringIO, SEEK_END
 import subprocess
 import time
 import configparser
-import re
 import argparse
 import shlex
 import logging
@@ -25,7 +24,7 @@ import signal
 import copy
 import re
 
-import parse_pytest
+from plugins import parse_pytest
 
 logger = logging.getLogger("tdsr")
 logger.addHandler(logging.NullHandler())
