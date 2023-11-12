@@ -2,7 +2,7 @@ import re
 
 error_lines = re.compile(r"E\s+(?:\+\s+)?(.*)")
 location_lines = re.compile(r">\s+(?:\+\s+)?(.*)")
-total_test = re.compile(r"=+\s([0-9]+\s(?:failed|passed)){1}(?:,\s)?([0-9]\spassed)?.*=+")
+total_test = re.compile(r"=+\s((?:[0-9]+\s(?:failed|passed|error))|no tests)(?:,\s)?(?:ran\s)?([0-9]\spassed)?.*=+")
 
 
 def parse_output(lines):
