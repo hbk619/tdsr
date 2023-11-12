@@ -422,19 +422,21 @@ def handle_delete():
 	say_character(screen.buffer[screen.cursor.y][screen.cursor.x].data)
 	return KeyHandler.PASSTHROUGH
 
-matcher = re.compile(r'([-=!#])\1{2,}')
-
 def handle_pytest():
 	lines = []
+	prompt_matcher = re.compile(fr"{state.config.get('speech', 'prompt', fallback='.*')}")
+	pytest_command = state.config.get('commands', 'pytest', fallback='pytest ')
 	for i in reversed(range(len(screen.buffer))):
 		line = "".join(screen.buffer[i][x].data for x in range(screen.columns)).strip()
 		lines.append(line)
-		if "pytest " in line:
+		if prompt_matcher.match(line) and pytest_command in line:
 			break
 	lines_to_read = parse_pytest.parse_output(lines)
 
 	for line in lines_to_read:
 		say(line)
+
+symbols_matcher = re.compile(r'([-=!#])\1{2,}')
 
 def sayline(y):
 	line = "".join(screen.buffer[y][x].data for x in range(screen.columns)).strip()
@@ -446,7 +448,7 @@ def sayline(y):
 
 
 def replace_duplicate_characters_with_count(line):
-	results = matcher.finditer(line)
+	results = symbols_matcher.finditer(line)
 	new_line = line
 	for r in results:
 		match = r.group()
@@ -614,6 +616,9 @@ def sb():
 
 def say(data, force_process_symbols=False):
 	data = replace_duplicate_characters_with_count(data)
+	# prompt_matcher = re.compile(fr"{state.config.get('speech', 'prompt')}") if state.config["prompt"] else ""
+	# if prompt_matcher:
+	# 	data = data.replace(prompt_matcher, "")
 	data = data.strip()
 	def replace_symbols(m):
 		return " %s " % state.config['symbols'][str(ord(m.group(0)))]

@@ -1,5 +1,9 @@
 [speech]
 process_symbols = False
+prompt = ^➜\s{2}.+✗?
+
+[commands]
+pytest = pytest -x
 
 [symbols]
 32 = space
