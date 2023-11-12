@@ -1,1 +1,5 @@
 *.pyc
+tdsr.log
+venv
+.idea
+.pytest_cache
