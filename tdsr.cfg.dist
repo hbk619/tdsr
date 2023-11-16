@@ -4,9 +4,11 @@ prompt = ^➜\s{2}.+✗?
 
 [commands]
 pytest = pytest -x
+git_status = git status
 
 [plugins]
 pytest = p
+git_status = s
 
 [symbols]
 32 = space
