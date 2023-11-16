@@ -2,6 +2,7 @@
 #tdsr, a terminal screen reader
 #Copyright (C) 2016, 2017  Tyler Spivey
 #See the license in COPYING.txt
+import importlib
 import sys
 import os
 import select
@@ -23,8 +24,7 @@ import platform
 import signal
 import copy
 import re
-
-from plugins import parse_pytest
+import plugins
 
 logger = logging.getLogger("tdsr")
 logger.addHandler(logging.NullHandler())
@@ -84,6 +84,10 @@ class KeyHandler:
 		self.fd = fd
 		self.last_key = None
 		self.last_key_time = 0.0
+
+	def add(self, key, handler):
+		if key not in self.keymap:
+			self.keymap[key] = handler
 
 	def process(self, data):
 		key_time = time.time()
@@ -333,6 +337,10 @@ def main():
 	decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
 	default_key_handler = KeyHandler(keymap, fd)
 	state.key_handlers.append(default_key_handler)
+	plugins = dict(state.config.items('plugins'))
+	for plugin, shortcut in plugins.items():
+		default_key_handler.add(f'\x1b{shortcut}'.encode(), handle_plugin(plugin))
+
 	termios.tcsetattr(fd, termios.TCSADRAIN, old)
 	resize_terminal(fd)
 	signal_pipe = os.pipe()
@@ -421,19 +429,24 @@ def handle_delete():
 	say_character(screen.buffer[screen.cursor.y][screen.cursor.x].data)
 	return KeyHandler.PASSTHROUGH
 
-def handle_pytest():
-	lines = []
-	prompt_matcher = re.compile(fr"{state.config.get('speech', 'prompt', fallback='.*')}")
-	pytest_command = state.config.get('commands', 'pytest', fallback='pytest ')
-	for i in reversed(range(len(screen.buffer))):
-		line = "".join(screen.buffer[i][x].data for x in range(screen.columns)).strip()
-		lines.append(line)
-		if prompt_matcher.match(line) and pytest_command in line:
-			break
-	lines_to_read = parse_pytest.parse_output(lines)
+def handle_plugin(plugin_name):
+	mod = importlib.import_module(f"plugins.parse_{plugin_name}")
+	def handle():
+		lines = []
+		prompt_matcher = re.compile(fr"{state.config.get('speech', 'prompt', fallback='.*')}")
+		command = state.config.get('commands', plugin_name, fallback=f'{plugin_name} ')
+		for i in reversed(range(len(screen.buffer))):
+			line = "".join(screen.buffer[i][x].data for x in range(screen.columns)).strip()
+			lines.append(line)
+			if prompt_matcher.match(line) and command in line:
+				break
+		lines_to_read = mod.parse_output(lines)
 
-	for line in lines_to_read:
-		say(line)
+		for line in lines_to_read:
+			say(line)
+
+	return handle
+
 
 symbols_matcher = re.compile(r'([-=!#])\1{2,}')
 
@@ -840,7 +853,6 @@ keymap = {
 	b'\x1bk\x1bk': lambda: sayword(spell=True),
 	b'\x1bl': nextword,
 	b'\x1bm': prevchar,
-	b'\x1bp': handle_pytest,
 	b'\x1b,': lambda: saychar(state.revy, state.revx),
 	b'\x1b,\x1b,': lambda: saychar(state.revy, state.revx, phonetically=True),
 	b'\x1b.': nextchar,

@@ -5,6 +5,9 @@ prompt = ^➜\s{2}.+✗?
 [commands]
 pytest = pytest -x
 
+[plugins]
+pytest = p
+
 [symbols]
 32 = space
 33 = bang
