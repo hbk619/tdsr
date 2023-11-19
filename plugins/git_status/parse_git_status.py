@@ -2,7 +2,7 @@ import re
 
 instructions = re.compile(r"\(use\s\"git\s.*\)")
 staged = re.compile(r"Changes to be committed:")
-status = re.compile(r"\s*(modified|added|removed|new file):.*")
+status = re.compile(r"\s*(modified|added|removed|new file|renamed):.*")
 
 
 def parse_output(lines):
