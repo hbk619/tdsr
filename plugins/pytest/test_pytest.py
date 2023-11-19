@@ -1,4 +1,4 @@
-from plugins.pytest import parse_pytest
+from plugins.pytest import parse_output
 
 
 lines = """
@@ -26,7 +26,7 @@ FAILED test_things.py::test_answer - assert 4 == 5
 
 def test_parsing_assert_single_failure():
     expected = ["code is assert inc(3) == 5", "assert 4 == 5", "where 4 = inc(3)", "1 failed"]
-    results = parse_pytest.parse_output(lines.split('\n'))
+    results = parse_output(lines.split('\n'))
     assert results == expected
 
 
@@ -41,7 +41,7 @@ collected 0 items
 
 def test_parsing_assert_no_tests():
     expected = ["no tests"]
-    results = parse_pytest.parse_output(no_tests.split('\n'))
+    results = parse_output(no_tests.split('\n'))
     assert results == expected
 
 
@@ -62,7 +62,7 @@ FAILED test_things.py::test_answer_correct - KeyError: 'blah'
 
 def test_parsing_key_error():
     expected = ["code is assert {}[\"blah\"] == 1", "KeyError: 'blah'", "1 failed"]
-    results = parse_pytest.parse_output(key_error.split('\n'))
+    results = parse_output(key_error.split('\n'))
     assert results == expected
 
 
@@ -87,7 +87,7 @@ ________________________________________________________________________________
 
     def test_parsing():
         expected = ["1 failed"]
->       results = parse_pytest.parse_output(lines)
+>       results = parse_output(lines)
 
 test_things.py:37:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
@@ -110,8 +110,8 @@ FAILED test_things.py::test_parsing - AttributeError: 'NoneType' object has no a
 
 
 def test_parsing_passing_and_failed():
-    expected = ["code is assert inc(3) == 5", "assert 4 == 5", "where 4 = inc(3)", "code is results = parse_pytest.parse_output(lines)", "code is if matches.group():", "AttributeError: 'NoneType' object has no attribute 'group'", "2 failed", "1 passed"]
-    results = parse_pytest.parse_output(passing_and_failed.split('\n'))
+    expected = ["code is assert inc(3) == 5", "assert 4 == 5", "where 4 = inc(3)", "code is results = parse_output(lines)", "code is if matches.group():", "AttributeError: 'NoneType' object has no attribute 'group'", "2 failed", "1 passed"]
+    results = parse_output(passing_and_failed.split('\n'))
     assert results == expected
 
 
@@ -154,7 +154,7 @@ ERROR  - ModuleNotFoundError: No module named 'flask'
 
 def test_parsing_error():
     expected = ["ModuleNotFoundError: No module named 'flask'", "1 error"]
-    results = parse_pytest.parse_output(error.split('\n'))
+    results = parse_output(error.split('\n'))
     assert results == expected
 
 
@@ -176,5 +176,5 @@ test_parse_pytest.py::test_parsing_error PASSED                                 
 
 def test_parsing_passing():
     expected = ["5 passed"]
-    results = parse_pytest.parse_output(passing.split('\n'))
+    results = parse_output(passing.split('\n'))
     assert results == expected

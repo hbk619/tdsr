@@ -1,4 +1,4 @@
-from plugins.git_status import parse_git_status
+from plugins.git_status import parse_output
 
 status = """On branch my-branchie
 Changes to be committed:
@@ -21,5 +21,5 @@ def test_git_status_committed():
     expected = ["modified:   ma/path/to/staged.md"]
     lines = status.split('\n')
     lines.reverse()
-    results = parse_git_status.parse_output(lines)
+    results = parse_output(lines)
     assert results == expected
