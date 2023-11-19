@@ -17,4 +17,4 @@ def parse_output(lines):
                 changes.append(line.strip())
             elif len(line) == 0:
                 break
-    return changes
+    return changes if len(changes) else ['No staged files']
