@@ -1,4 +1,4 @@
-from plugins import parse_pytest
+from plugins.pytest import parse_pytest
 
 
 lines = """

@@ -430,7 +430,7 @@ def handle_delete():
 	return KeyHandler.PASSTHROUGH
 
 def handle_plugin(plugin_name):
-	mod = importlib.import_module(f"plugins.parse_{plugin_name}")
+	mod = importlib.import_module(f"plugins.{plugin_name}")
 	def handle():
 		lines = []
 		prompt_matcher = re.compile(fr"{state.config.get('speech', 'prompt', fallback='.*')}")

@@ -1,4 +1,4 @@
-from plugins import parse_git_status
+from plugins.git_status import parse_git_status
 
 status = """On branch my-branchie
 Changes to be committed:
