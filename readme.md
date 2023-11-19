@@ -64,6 +64,31 @@ character code = name
 ```
 Because of how the config system works, it's best to do this with one TDSR open, then exit and re-launch to see the changes.
 
+## Plugins
+Custom key binds and handlers can be added via the plugins and commands section of the config files
+and a python module in the plugins directory that exports the following method signature:
+
+```python
+# Name: parse_output
+# Parameters: an array of strings (the lines from the terminal)
+# Returns: an array of strings (the things to speak)
+def parse_output(lines):
+    return ["a list of things to say"]
+```
+
+### Config file
+In ~/.tdsr.cfg you add to the plugins and commands section to modify the shortcut and terminal command that has been run
+To add a shortcut for alt d to trigger a plugin called my_plugin add the following under [plugins]
+
+```
+my_plugin = d
+```
+
+To specify a command of `echo "hi"` (which makes parsing slightly more efficient) add the following under [commands]
+```
+my_plugin = echo "hi"
+```
+
 ## License
 Copyright (C) 2016, 2017  Tyler Spivey
 
