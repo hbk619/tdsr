@@ -4,13 +4,10 @@ import re
 def parse_output(lines):
     words_to_say = []
     options = []
-    command = ""
-    for line in lines:
+    command = lines[-1]
+    for line in lines[0:-1]:
         if line:
-            if "cd " in line:
-                command = line
-            else:
-                options += line.split()
+            options += line.split()
 
     for option in options:
         selected = ""
