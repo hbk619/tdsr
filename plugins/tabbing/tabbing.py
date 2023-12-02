@@ -11,7 +11,7 @@ def parse_output(lines):
 
     for option in options:
         selected = ""
-        if command.endswith(re.sub('@/?$', '', option)):
+        if command.endswith(re.sub('@$', '/', option)):
             selected = " selected"
 
         words_to_say.append(re.sub('/$', '', option) + selected)
