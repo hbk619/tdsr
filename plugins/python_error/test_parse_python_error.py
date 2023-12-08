@@ -29,7 +29,7 @@ SyntaxError: '(' was never closed"""
 
 
 def test_syntax_error():
-    expected = ["SyntaxError: '(' was never closed", "Code is     blah(", "File test.py", "line 2"]
+    expected = ["SyntaxError: '(' was never closed", "Code is     blah(", "File test.py", "line 2", "Problem at blah("]
     lines = syntax_error.split('\n')
     lines.reverse()
     results = parse_output(lines)
