@@ -24,7 +24,6 @@ import platform
 import signal
 import copy
 import re
-import plugins
 
 logger = logging.getLogger("tdsr")
 logger.addHandler(logging.NullHandler())
@@ -52,8 +51,9 @@ class State:
 		self.key_handlers = []
 		self.config = configparser.ConfigParser()
 		self.config['speech'] = {'process_symbols': 'false', 'key_echo': True, 'cursor_tracking': True,
-		"line_pause": True}
+		"line_pause": True, 'repeated_symbols': 'false', 'repeated_symbols_values': '-=!#'}
 		self.config['symbols'] = {}
+		self.config['plugins'] = {}
 		self.symbols_Re = None
 		self.copy_x = None
 		self.copy_y = None
@@ -90,7 +90,7 @@ class KeyHandler:
 			self.keymap[key] = handler
 
 	def process(self, data):
-		key_time = time.time()
+		key_time = time.monotonic()
 		key_delta = key_time - self.last_key_time
 		self.last_key_time = key_time
 		repeat = data + data
@@ -116,11 +116,13 @@ class ConfigHandler(KeyHandler):
 		self.keymap = {
 			b'r': self.set_rate,
 			b'v': self.set_volume,
+			b'V': self.set_voice_idx,
 			b'p': self.set_process_symbols,
 			b'd': self.set_delay,
 			b'e': self.set_echo,
 			b'c': self.set_cursor_tracking,
 			b'l': self.set_line_pause,
+			b's': self.set_repeated_symbols,
 		}
 		super().__init__(self.keymap)
 
@@ -154,6 +156,22 @@ class ConfigHandler(KeyHandler):
 		state.save_config()
 		say("Confirmed")
 
+	def set_voice_idx(self):
+		say("voice index")
+		state.key_handlers.append(BufferHandler(on_accept=self.set_voice_idx2))
+
+	def set_voice_idx2(self, val):
+		try:
+			val = int(val)
+		except ValueError:
+			say("Invalid value")
+			return
+		synth.set_voice_idx(val)
+		state.config['speech']['voice_idx'] = str(val)
+		state.save_config()
+		say("Confirmed")
+
+
 	def set_process_symbols(self):
 		current = state.config.getboolean('speech', 'process_symbols', fallback=False)
 		current = not current
@@ -181,6 +199,13 @@ class ConfigHandler(KeyHandler):
 		state.config['speech']['line_pause'] = str(current)
 		state.save_config()
 		say("line pause on" if current else "line pause off")
+
+	def set_repeated_symbols(self):
+		current = state.config.getboolean('speech', 'repeated_symbols', fallback=False)
+		current = not current
+		state.config['speech']['repeated_symbols'] = str(current)
+		state.save_config()
+		say("repeated symbols on" if current else "repeated symbols off")
 
 	def set_delay(self):
 		say("Cursor delay")
@@ -253,13 +278,16 @@ class Synth:
 		self.speech_server = speech_server
 		self.rate = None
 		self.volume = None
+		self.voice_idx = None
 
 	def start(self):
 		self.pipe = subprocess.Popen(self.speech_server, stdin=subprocess.PIPE)
-		if self.rate:
+		if self.rate is not None:
 			self.set_rate(self.rate)
-		if self.volume:
+		if self.volume is not None:
 			self.set_volume(self.volume)
+		if self.voice_idx is not None:
+			self.set_voice_idx(self.voice_idx)
 
 	def send(self, text):
 		text = text.encode('utf-8')
@@ -281,6 +309,10 @@ class Synth:
 	def set_volume(self, volume):
 		self.volume = volume
 		self.send('v%d\n' % volume)
+
+	def set_voice_idx(self, voice_idx):
+		self.voice_idx = voice_idx
+		self.send('V%d\n' % voice_idx)
 
 	def close(self):
 		self.pipe.stdin.close()
@@ -324,6 +356,8 @@ def main():
 		synth.set_rate(int(state.config['speech']['rate']))
 	if 'volume' in state.config['speech']:
 		synth.set_volume(int(state.config['speech']['volume']))
+	if 'voice_idx' in state.config['speech']:
+		synth.set_voice_idx(int(state.config['speech']['voice_idx']))
 	if 'cursor_delay' in state.config['speech']:
 		CURSOR_TIMEOUT = float(state.config['speech']['cursor_delay'])
 	pid, fd = os.forkpty()
@@ -449,32 +483,37 @@ def handle_plugin(plugin_name):
 			lines.append(line)
 			if prompt_matcher.search(line) and check_command and command_matcher.search(line):
 				break
-		lines_to_read = mod.parse_output(lines)
-
-		for line in lines_to_read:
-			say(line)
+		try:
+			lines_to_read = mod.parse_output(lines)
+			for line in lines_to_read:
+				say(line)
+		except Exception as e:
+			logger.error(e)
+			say(f"Error loading plugin {e.args}")
 
 	return handle
 
-
-symbols_matcher = re.compile(r'([-=!#])\1{2,}')
-
 def sayline(y):
 	line = "".join(screen.buffer[y][x].data for x in range(screen.columns)).strip()
-	logger.info("saying line" + line)
 	if line == u'':
 		line = u'blank'
 
-	say(line)
+	new_line = replace_duplicate_characters_with_count(line)
+
+	say(new_line)
 
 
 def replace_duplicate_characters_with_count(line):
-	results = symbols_matcher.finditer(line)
+	symbols = state.config.get('speech', 'repeated_symbols_values', fallback='-=!#')
+	matcher = re.compile(fr'([{symbols}])\1*')
 	new_line = line
-	for r in results:
-		match = r.group()
-		if len(match) > 1:
-			new_line = new_line.replace(match, f"{len(match)} {r.groups()[0]}", 1)
+	if state.config.getboolean('speech', 'repeated_symbols'):
+		results = matcher.finditer(line)
+		for r in results:
+			match = r.group()
+			if len(match) > 1:
+				new_line = new_line.replace(match, f"{len(match)} {r.groups()[0]}", 1)
+
 	return new_line
 
 
@@ -633,7 +672,8 @@ def sb():
 	if data == u'':
 		return
 	if not state.tempsilence:
-		say(data)
+		new_line = replace_duplicate_characters_with_count(data)
+		say(new_line)
 
 def say(data, force_process_symbols=False):
 	data = replace_duplicate_characters_with_count(data)
@@ -676,7 +716,7 @@ def arrow_right():
 	return KeyHandler.PASSTHROUGH
 
 def schedule(timeout, func, set_tempsilence=False):
-	state.delayed_functions.append((time.time() + timeout, func))
+	state.delayed_functions.append((time.monotonic() + timeout, func))
 	if set_tempsilence:
 		state.tempsilence = True
 
@@ -684,7 +724,7 @@ def run_scheduled():
 	if not state.delayed_functions:
 		return
 	to_remove = []
-	curtime = time.time()
+	curtime = time.monotonic()
 	for i in state.delayed_functions:
 		t, f = i
 		if curtime >= t:
@@ -696,7 +736,7 @@ def run_scheduled():
 def time_until_next_delayed():
 	if not state.delayed_functions:
 		return None
-	return max(0, state.delayed_functions[0][0] - time.time())
+	return max(0, state.delayed_functions[0][0] - time.monotonic())
 
 def config():
 	say("config")
@@ -823,12 +863,17 @@ def copy_text(start_y, start_x, end_y, end_x):
 
 def copy_to_clip(data):
 	data = data.encode('utf-8')
+	proc_args = []
 	if platform.system() == 'Darwin':
-		proc = subprocess.Popen('pbcopy', stdin=subprocess.PIPE)
-		proc.stdin.write(data)
-		proc.stdin.close()
+		proc_args = ['pbcopy']
 	elif platform.system() == 'Linux':
-		proc = subprocess.Popen(['xclip', '-selection', 'clip'], stdin=subprocess.PIPE)
+		if os.getenv('XDG_SESSION_TYPE') == 'wayland':
+			proc_args = ['wl-copy']
+		else:
+			proc_args = ['xclip', '-selection', 'clip']
+
+	if proc_args:
+		proc = subprocess.Popen(proc_args, stdin=subprocess.PIPE)
 		proc.stdin.write(data)
 		proc.stdin.close()
 
